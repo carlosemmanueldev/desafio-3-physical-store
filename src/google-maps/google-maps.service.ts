@@ -1,5 +1,5 @@
 import { Client, GeocodeResponse, LatLngLiteral } from '@googlemaps/google-maps-services-js';
-import { Injectable } from '@nestjs/common';
+import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 
 @Injectable()
@@ -17,11 +17,12 @@ export class GoogleMapsService extends Client {
       },
     });
 
-    const { lat, lng }: LatLngLiteral = googleRes.data.results[0].geometry.location;
+    const coordinates: LatLngLiteral = googleRes.data.results[0].geometry.location;
 
-    return {
-      lat: lat,
-      lng: lng,
-    };
+    if (!coordinates) {
+      throw new HttpException('Address not found.', HttpStatus.NOT_FOUND);
+    }
+
+    return coordinates;
   }
 }
