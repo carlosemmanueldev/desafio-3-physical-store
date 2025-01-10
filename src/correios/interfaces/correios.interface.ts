@@ -1,11 +1,15 @@
 export interface CorreiosDetails {
   sedex: {
+    codProductAgencia: string;
     price: string;
     deliveryTime: string;
+    description: string;
   },
   pac: {
+    codProductAgencia: string;
     price: string;
     deliveryTime: string;
+    description: string;
   }
 }
 
