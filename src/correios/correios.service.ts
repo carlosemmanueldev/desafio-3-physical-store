@@ -32,12 +32,16 @@ export class CorreiosService {
 
     return {
       sedex: {
+        codProductAgencia: data[0].codProdutoAgencia,
         price: data[0].precoPPN,
         deliveryTime: data[0].prazo,
+        description: data[0].urlTitulo
       },
       pac: {
+        codProductAgencia: data[1].codProdutoAgencia,
         price: data[1].precoPPN,
-        deliveryTime: data[1].prazo
+        deliveryTime: data[1].prazo,
+        description: data[1].urlTitulo
       }
     };
   }
