@@ -6,8 +6,6 @@ import { CorreiosService } from '../correios/correios.service';
 import { getModelToken } from '@nestjs/mongoose';
 import { HttpException, HttpStatus } from '@nestjs/common';
 import { storeStub } from '../../test/stub/store.stub';
-import { Model } from 'mongoose';
-import { Store } from './schemas/store.schema';
 
 describe('StoresService', () => {
   let service: StoresService;

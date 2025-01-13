@@ -1,4 +1,3 @@
-import { Store } from '../../src/stores/schemas/store.schema';
 import { StoreType } from '../../src/stores/dtos/store.dto';
 
 export const storeStub = () => {
