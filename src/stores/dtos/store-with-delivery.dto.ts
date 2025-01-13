@@ -2,6 +2,8 @@ import { ApiProperty } from '@nestjs/swagger';
 import { Expose } from 'class-transformer';
 import { MotoboyDetailsDto } from './motoboy-details.dto';
 import { CorreiosDetailsDto } from './correios-details.dto';
+import { IsEnum } from 'class-validator';
+import { StoreType } from './store.dto';
 
 export class StoreWithDeliveryDto {
   @ApiProperty({
@@ -30,7 +32,8 @@ export class StoreWithDeliveryDto {
     example: 'loja',
   })
   @Expose()
-  type: string;
+  @IsEnum(StoreType, { message: 'The type must be either "loja" or "pdv".' })
+  type: StoreType;
 
   @ApiProperty({
     description: 'Distance to the store',
