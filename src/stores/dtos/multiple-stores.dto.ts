@@ -12,7 +12,10 @@ export class MultipleStoresDto {
   offset: number;
 
   @Expose()
-  total: number;
+  totalStores: number;
+
+  @Expose()
+  totalPages: number;
 
   @Expose()
   @Type(() => StoreDto)
