@@ -1,6 +1,12 @@
 import { Expose, Transform } from 'class-transformer';
 import { ApiProperty } from '@nestjs/swagger';
 import { ObjectId } from 'mongoose';
+import { IsEnum } from 'class-validator';
+
+export enum StoreType {
+  LOJA = 'loja',
+  PDV = 'pdv',
+}
 
 export class StoreDto {
   @ApiProperty({
@@ -34,7 +40,7 @@ export class StoreDto {
 
   @ApiProperty({
     description: 'Coordinates of the store',
-    example: { coordinates: { lat: -23.55052, lon: -46.633308 } },
+    example: { lat: -23.55052, lon: -46.633308 },
   })
   @Transform(({ obj }) => ({
     lat: obj.location.coordinates[1],
@@ -97,7 +103,8 @@ export class StoreDto {
     example: 'loja',
   })
   @Expose()
-  type: string;
+  @IsEnum(StoreType, { message: 'The type must be either "loja" or "pdv".' })
+  type: StoreType;
 
   @ApiProperty({
     description: 'Postal code of the store location',
