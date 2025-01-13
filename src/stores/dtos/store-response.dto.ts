@@ -15,6 +15,6 @@ export class StoreResponseDto {
     type: StoreDto,
   })
   @Expose()
-  @Type(() => StoreDto)
+  @Type((): typeof StoreDto => StoreDto)
   store: StoreDto;
 }
