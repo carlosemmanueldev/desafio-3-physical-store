@@ -15,9 +15,9 @@ export class Store extends Document {
 
     @Prop({
         type: { type: String, default: 'Point', enum: ['Point'], required: true },
-        coordinates: { type: [Number] },
+        coordinates: { type: [Number], required: true },
     })
-    location: { coordinates: [number, number] };
+    location: { type: string, coordinates: [number, number] };
 
     @Prop({required: true})
     address1: string;
