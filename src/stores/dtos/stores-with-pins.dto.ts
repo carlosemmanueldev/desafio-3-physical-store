@@ -1,6 +1,7 @@
 import { ApiProperty } from '@nestjs/swagger';
 import { Expose, Type } from 'class-transformer';
 import { StoreWithDeliveryDto } from './store-with-delivery.dto';
+import { PinsDto } from './pins.dto';
 
 export class StoresWithPinsDto {
   @ApiProperty({
@@ -43,7 +44,7 @@ export class StoresWithPinsDto {
     type: [StoreWithDeliveryDto],
   })
   @Expose()
-  @Type(() => StoreWithDeliveryDto)
+  @Type((): typeof StoreWithDeliveryDto => StoreWithDeliveryDto)
   stores: StoreWithDeliveryDto[];
 
   @ApiProperty({
@@ -51,6 +52,6 @@ export class StoresWithPinsDto {
     type: [StoresWithPinsDto],
   })
   @Expose()
-  @Type(() => StoresWithPinsDto)
-  pins: StoresWithPinsDto[];
+  @Type((): typeof PinsDto => PinsDto)
+  pins: PinsDto[];
 }
