@@ -18,7 +18,7 @@ Também será possível calcular o frete para as lojas cadastradas.
 
 ## 📃 Documentação
 
-Em construção...
+Feita por meio do Swagger, pode ser acessada na API através do endpoint `/api`.
 
 ## 📝 Autor
 
