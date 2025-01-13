@@ -106,7 +106,7 @@ export class StoresService {
         },
       },
       { $skip: skip },
-      { $limit: limit },
+      { $limit: +limit },
     ]);
 
     const storesWithShippingCostAndPins: StoreDistancePins[] = await Promise.all(
