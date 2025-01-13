@@ -1,15 +1,21 @@
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
-import { Store } from './store.schema';
+import { Store } from './schemas/store.schema';
 import { InjectModel } from '@nestjs/mongoose';
 import { Document, Model } from 'mongoose';
 import { CreateStoreDto } from './dtos/create-store.dto';
 import { ViaCepService } from '../via-cep/via-cep.service';
 import { GoogleMapsService } from '../google-maps/google-maps.service';
-import { ViaCepResponse } from '../via-cep/interfaces/via-cep.interface';
-import { LatLngLiteral } from '@googlemaps/google-maps-services-js';
 import { CorreiosService } from '../correios/correios.service';
 import { CorreiosDetails, MotoboyDetails } from 'src/correios/interfaces/correios.interface';
-import { PaginateModel } from 'mongoose';
+import { PaginateModel, PaginateResult } from 'mongoose';
+import { calculateCoordinates } from './utils/coordinates';
+import { getMotoboyCost } from './utils/motoboy';
+import { AddressData } from './interfaces/address-data.interface';
+import { PaginatedStore } from './interfaces/paginated-store.interface';
+import { StoreWithPins } from './interfaces/store-with-pins.interface';
+import { PinsDto } from './dtos/pins.dto';
+import { StoreWithDeliveryDto } from './dtos/store-with-delivery.dto';
+import { StoreDistancePins } from './interfaces/store-distance-pins.interface';
 
 @Injectable()
 export class StoresService {
@@ -19,11 +25,10 @@ export class StoresService {
     private viaCepService: ViaCepService,
     private correiosService: CorreiosService,
     private googleMapsService: GoogleMapsService,
-  ) {
-  }
+  ) {}
 
-  async getAll(offset: number = 1, limit: number = 10) {
-    const result = await this.storeModelPag.paginate({}, { page: offset, limit });
+  async getAll(offset: number = 1, limit: number = 10): Promise<PaginatedStore> {
+    const result: PaginateResult<Store> = await this.storeModelPag.paginate({}, { page: offset, limit });
 
     return {
       stores: result.docs,
@@ -45,8 +50,8 @@ export class StoresService {
   }
 
   async create(createStoreDto: CreateStoreDto): Promise<Store> {
-    const addressData = await this.calculateCoordinates(createStoreDto.postalCode);
-    const storeData = {
+    const addressData: AddressData = await calculateCoordinates(createStoreDto.postalCode, this.viaCepService, this.googleMapsService);
+    const storeData: Partial<Store> = {
       ...createStoreDto,
       address1: addressData.address1,
       address2: addressData.address2,
@@ -55,16 +60,15 @@ export class StoresService {
       state: addressData.state,
       location: {
         type: 'Point',
-        coordinates: addressData.coordinates,
+        coordinates: [addressData.coordinates[0], addressData.coordinates[1]],
       },
     };
 
-    const createdStore = new this.storeModel(storeData);
-    return createdStore.save();
+    return await this.storeModel.create(storeData);
   }
 
-  async update(id: string, attrs: Partial<Store>): Promise<Store> {
-    const store = await this.storeModel.findByIdAndUpdate(id, attrs, { new: true });
+  async update(id: string, attrs: Partial<Store>): Promise<Store | null> {
+    const store: Store & Document | null = await this.storeModel.findByIdAndUpdate(id, attrs, { new: true });
 
     if (!store) {
       throw new HttpException('Store not found with that ID.', HttpStatus.NOT_FOUND);
@@ -74,7 +78,7 @@ export class StoresService {
   }
 
   async delete(id: string): Promise<void> {
-    const store = await this.storeModel.findByIdAndDelete(id);
+    const store: Store & Document | null = await this.storeModel.findByIdAndDelete(id);
 
     if (!store) {
       throw new HttpException('Store not found with that ID.', HttpStatus.NOT_FOUND);
@@ -83,27 +87,11 @@ export class StoresService {
     return;
   }
 
-  async calculateCoordinates(cep: string) {
-    const addressData: ViaCepResponse = await this.viaCepService.getAddressByCep(cep);
-    const { logradouro, bairro, localidade, uf, estado, unidade } = addressData;
-    const address: string = `${logradouro}, ${bairro}, ${localidade}, ${estado}`;
-    const coordinates: LatLngLiteral = await this.googleMapsService.getCoordinates(address);
+  async getNearBy(cep: string, offset: number = 1, limit: number = 10): Promise<StoreWithPins> {
+    const { coordinates } = await calculateCoordinates(cep, this.viaCepService, this.googleMapsService);
 
-    return {
-      address1: logradouro,
-      address2: bairro,
-      address3: unidade,
-      city: localidade,
-      state: uf,
-      coordinates: [coordinates.lng, coordinates.lat],
-    };
-  }
-
-  async getNearBy(cep: string, offset: number = 1, limit: number = 10) {
-    const { coordinates } = await this.calculateCoordinates(cep);
-
-    const skip = (offset - 1) * limit;
-    const totalStores = await this.storeModel.aggregate([
+    const skip: number = (offset - 1) * limit;
+    const totalStores: { totalStores: number }[] = await this.storeModel.aggregate([
       {
         $geoNear: {
           near: {
@@ -119,8 +107,8 @@ export class StoresService {
       { $count: 'totalStores' },
     ]);
 
-    const totalStoresCount = totalStores.length > 0 ? totalStores[0].totalStores : 0;
-    const totalPages = Math.ceil(totalStoresCount / limit);
+    const totalStoresCount: number = totalStores.length > 0 ? totalStores[0].totalStores : 0;
+    const totalPages: number = Math.ceil(totalStoresCount / limit);
 
     const aggregation = await this.storeModel.aggregate([
       {
@@ -139,14 +127,14 @@ export class StoresService {
       { $limit: limit },
     ]);
 
-    const storesWithShippingCostAndPins = await Promise.all(
+    const storesWithShippingCostAndPins: StoreDistancePins[] = await Promise.all(
       aggregation.map(async (store) => {
         let value: CorreiosDetails | MotoboyDetails;
 
         if (store.distance > 50 && store.type === 'loja') {
           value = await this.correiosService.getShippingCost(cep, store.postalCode);
         } else if (store.distance <= 50) {
-          value = this.getMotoboyCost(store.distance);
+          value = getMotoboyCost(store.distance);
         }
 
         if (!value) {
@@ -170,9 +158,10 @@ export class StoresService {
       })
     );
 
-    const filteredStores = storesWithShippingCostAndPins.filter((item) => item !== null && item !== undefined);
-    const stores = filteredStores.map((item) => item.store);
-    const pins = filteredStores.map((item) => item.pin);
+
+    const filteredStores: StoreDistancePins[] = storesWithShippingCostAndPins.filter((item) => item !== null && item !== undefined);
+    const stores: StoreWithDeliveryDto[] = filteredStores.map((item) => item.store);
+    const pins: PinsDto[] = filteredStores.map((item) => item.pin);
 
     return {
       stores: stores,
@@ -184,8 +173,12 @@ export class StoresService {
     };
   }
 
-  async getByState(state: string, offset: number = 1, limit: number = 10) {
-    const result = await this.storeModelPag.paginate({ state }, { page: offset, limit });
+  async getByState(state: string, offset: number = 1, limit: number = 10): Promise<PaginatedStore> {
+    const result: PaginateResult<Store> = await this.storeModelPag.paginate({ state }, { page: offset, limit });
+
+    if (result.docs.length === 0) {
+      throw new HttpException(`No stores found in the state of ${state}`, HttpStatus.NOT_FOUND);
+    }
 
     return {
       stores: result.docs,
@@ -194,17 +187,5 @@ export class StoresService {
       offset: result.page,
       limit: result.limit,
     };
-  }
-
-  getMotoboyCost(distance: number) {
-    const timeInHours = distance / 40;
-    const hours = Math.floor(timeInHours);
-    const minutes = Math.round((timeInHours - hours) * 60);
-
-    return {
-      deliveryTime: `${hours} horas e ${minutes} minutos`,
-      price: 'R$ 15,00',
-      description: 'Motoboy'
-    }
   }
 }
