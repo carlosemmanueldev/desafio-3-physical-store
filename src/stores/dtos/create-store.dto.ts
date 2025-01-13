@@ -9,6 +9,7 @@ import {
     MinLength,
 } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
+import { StoreType } from './store.dto';
 
 export class CreateStoreDto {
     @ApiProperty({
@@ -44,8 +45,8 @@ export class CreateStoreDto {
         example: 'loja',
     })
     @IsString()
-    @IsIn(['loja', 'pdv'])
-    type: string;
+    @IsIn(Object.values(StoreType), { message: 'The type must be either "loja" or "pdv".', })
+    type: StoreType;
 
     @ApiProperty({
         description: 'Postal code of the store location',
