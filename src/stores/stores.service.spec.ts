@@ -256,7 +256,7 @@ describe('StoresService', () => {
             __v: 0,
             distance: '2.30 km',
             value: {
-              deliveryTime: "0 horas e 3 minutos",
+              deliveryTime: "0 horas e 30 minutos",
               price: 'R$ 15,00',
               description: 'Motoboy'
             }
