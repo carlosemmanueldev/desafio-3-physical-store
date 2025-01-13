@@ -8,18 +8,30 @@ import { GoogleMapsService } from '../google-maps/google-maps.service';
 import { ViaCepResponse } from '../via-cep/interfaces/via-cep.interface';
 import { LatLngLiteral } from '@googlemaps/google-maps-services-js';
 import { CorreiosService } from '../correios/correios.service';
+import { CorreiosDetails, MotoboyDetails } from 'src/correios/interfaces/correios.interface';
+import { PaginateModel } from 'mongoose';
 
 @Injectable()
 export class StoresService {
   constructor(
     @InjectModel(Store.name) private storeModel: Model<Store>,
+    @InjectModel(Store.name) private storeModelPag: PaginateModel<Store>,
     private viaCepService: ViaCepService,
     private correiosService: CorreiosService,
     private googleMapsService: GoogleMapsService,
-  ) {}
+  ) {
+  }
 
-  getAll() {
-    return this.storeModel.find().exec();
+  async getAll(offset: number = 1, limit: number = 10) {
+    const result = await this.storeModelPag.paginate({}, { page: offset, limit });
+
+    return {
+      stores: result.docs,
+      totalPages: result.totalPages,
+      totalStores: result.totalDocs,
+      offset: result.page,
+      limit: result.limit,
+    };
   }
 
   async getById(id: string): Promise<Store> {
@@ -85,10 +97,30 @@ export class StoresService {
     };
   }
 
-  async getNearBy(cep: string) {
+  async getNearBy(cep: string, offset: number = 1, limit: number = 10) {
     const { coordinates } = await this.calculateCoordinates(cep);
 
-    const stores = await this.storeModel.aggregate([
+    const skip = (offset - 1) * limit;
+    const totalStores = await this.storeModel.aggregate([
+      {
+        $geoNear: {
+          near: {
+            type: 'Point',
+            coordinates: [coordinates[0], coordinates[1]],
+          },
+          distanceField: 'distance',
+          maxDistance: 100000, // Raio máximo de busca
+          distanceMultiplier: 0.001, // Converter metros para quilômetros
+          spherical: true,
+        },
+      },
+      { $count: 'totalStores' },
+    ]);
+
+    const totalStoresCount = totalStores.length > 0 ? totalStores[0].totalStores : 0;
+    const totalPages = Math.ceil(totalStoresCount / limit);
+
+    const aggregation = await this.storeModel.aggregate([
       {
         $geoNear: {
           near: {
@@ -101,43 +133,60 @@ export class StoresService {
           spherical: true,
         },
       },
+      { $skip: skip },
+      { $limit: limit },
     ]);
 
-    const storesWithShippingCost = await Promise.all(
-      stores.map(async (store) => {
+    const storesWithShippingCostAndPins = await Promise.all(
+      aggregation.map(async (store) => {
+        let value: CorreiosDetails | MotoboyDetails;
+
         if (store.distance > 50 && store.type === 'loja') {
-          const value = await this.correiosService.getShippingCost(cep, store.postalCode);
-          return {
+          value = await this.correiosService.getShippingCost(cep, store.postalCode);
+        } else if (store.distance <= 50) {
+          value = this.getMotoboyCost(store.distance);
+        }
+
+        return {
+          store: {
             ...store,
             value,
-          };
-        }
-        if (store.distance < 50) {
-          const value = this.getMotoboyCost(store.distance);
-          return {
-            ...store,
-            value,
-          };
-        }
-      }),
+            distance: `${store.distance.toFixed(2)} km`,
+          },
+          pin: {
+            position: {
+              lat: store.location.coordinates[1],
+              lng: store.location.coordinates[0],
+            },
+            title: store.name,
+          },
+        };
+      })
     );
 
-    const pins = stores.map((store) => ({
-      position: {
-        lat: store.location.coordinates[1],
-        lng: store.location.coordinates[0],
-      },
-      title: store.name,
-    }));
+    const stores = storesWithShippingCostAndPins.map((item) => item.store);
+    const pins = storesWithShippingCostAndPins.map((item) => item.pin);
 
     return {
-      stores: storesWithShippingCost,
+      stores: stores,
       pins: pins,
+      totalPages,
+      totalStores: totalStoresCount,
+      offset,
+      limit,
     };
   }
 
-  async getByState(state: string, limit: number, page: number) {
-    return this.storeModel.find({ state }).exec();
+  async getByState(state: string, offset: number = 1, limit: number = 10) {
+    const result = await this.storeModelPag.paginate({ state }, { page: offset, limit });
+
+    return {
+      stores: result.docs,
+      totalPages: result.totalPages,
+      totalStores: result.totalDocs,
+      offset: result.page,
+      limit: result.limit,
+    };
   }
 
   getMotoboyCost(distance: number) {
