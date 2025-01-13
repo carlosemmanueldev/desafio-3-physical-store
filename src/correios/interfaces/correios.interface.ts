@@ -13,6 +13,12 @@ export interface CorreiosDetails {
   }
 }
 
+export interface MotoboyDetails {
+  deliveryTime: string;
+  price: string;
+  description: string;
+}
+
 export type CorreiosResponse = [CorreiosInfo, CorreiosInfo];
 
 export interface CorreiosInfo {
