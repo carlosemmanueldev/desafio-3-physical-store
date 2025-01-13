@@ -91,24 +91,6 @@ export class StoresService {
     const { coordinates } = await calculateCoordinates(cep, this.viaCepService, this.googleMapsService);
 
     const skip: number = (offset - 1) * limit;
-    const totalStores: { totalStores: number }[] = await this.storeModel.aggregate([
-      {
-        $geoNear: {
-          near: {
-            type: 'Point',
-            coordinates: [coordinates[0], coordinates[1]],
-          },
-          distanceField: 'distance',
-          maxDistance: 100000,
-          distanceMultiplier: 0.001,
-          spherical: true,
-        },
-      },
-      { $count: 'totalStores' },
-    ]);
-
-    const totalStoresCount: number = totalStores.length > 0 ? totalStores[0].totalStores : 0;
-    const totalPages: number = Math.ceil(totalStoresCount / limit);
 
     const aggregation = await this.storeModel.aggregate([
       {
@@ -158,10 +140,12 @@ export class StoresService {
       })
     );
 
-
     const filteredStores: StoreDistancePins[] = storesWithShippingCostAndPins.filter((item) => item !== null && item !== undefined);
     const stores: StoreWithDeliveryDto[] = filteredStores.map((item) => item.store);
     const pins: PinsDto[] = filteredStores.map((item) => item.pin);
+
+    const totalStoresCount: number = stores.length;
+    const totalPages: number = Math.ceil(totalStoresCount / limit);
 
     return {
       stores: stores,
