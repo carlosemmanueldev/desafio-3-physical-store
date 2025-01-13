@@ -7,7 +7,7 @@ async function bootstrap() {
 
   const config = new DocumentBuilder()
     .setTitle('Store')
-    .setDescription('The store API description')
+    .setDescription('The description of endpoints for the Store API')
     .setVersion('1.0')
     .addTag('stores')
     .build();
