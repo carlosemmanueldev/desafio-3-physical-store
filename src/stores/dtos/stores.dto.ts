@@ -43,6 +43,6 @@ export class StoresDto {
     type: [StoreDto],
   })
   @Expose()
-  @Type(() => StoreDto)
+  @Type((): typeof StoreDto => StoreDto)
   stores: StoreDto[];
 }
