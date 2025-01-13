@@ -50,6 +50,7 @@ export class StoresService {
       ...createStoreDto,
       address1: addressData.address1,
       address2: addressData.address2,
+      address3: addressData.address3,
       city: addressData.city,
       state: addressData.state,
       location: {
@@ -62,8 +63,8 @@ export class StoresService {
     return createdStore.save();
   }
 
-  update(id: string, attrs: Partial<Store>): Promise<Store> {
-    const store = this.storeModel.findByIdAndUpdate(id, attrs, { new: true });
+  async update(id: string, attrs: Partial<Store>): Promise<Store> {
+    const store = await this.storeModel.findByIdAndUpdate(id, attrs, { new: true });
 
     if (!store) {
       throw new HttpException('Store not found with that ID.', HttpStatus.NOT_FOUND);
@@ -72,25 +73,26 @@ export class StoresService {
     return store;
   }
 
-  delete(id: string): Promise<Store> {
-    const store = this.storeModel.findByIdAndDelete(id);
+  async delete(id: string): Promise<void> {
+    const store = await this.storeModel.findByIdAndDelete(id);
 
     if (!store) {
       throw new HttpException('Store not found with that ID.', HttpStatus.NOT_FOUND);
     }
 
-    return store;
+    return;
   }
 
   async calculateCoordinates(cep: string) {
     const addressData: ViaCepResponse = await this.viaCepService.getAddressByCep(cep);
-    const { logradouro, bairro, localidade, uf, estado, regiao } = addressData;
+    const { logradouro, bairro, localidade, uf, estado, unidade } = addressData;
     const address: string = `${logradouro}, ${bairro}, ${localidade}, ${estado}`;
     const coordinates: LatLngLiteral = await this.googleMapsService.getCoordinates(address);
 
     return {
       address1: logradouro,
       address2: bairro,
+      address3: unidade,
       city: localidade,
       state: uf,
       coordinates: [coordinates.lng, coordinates.lat],
@@ -109,8 +111,8 @@ export class StoresService {
             coordinates: [coordinates[0], coordinates[1]],
           },
           distanceField: 'distance',
-          maxDistance: 100000, // Raio máximo de busca
-          distanceMultiplier: 0.001, // Converter metros para quilômetros
+          maxDistance: 100000,
+          distanceMultiplier: 0.001,
           spherical: true,
         },
       },
@@ -147,6 +149,10 @@ export class StoresService {
           value = this.getMotoboyCost(store.distance);
         }
 
+        if (!value) {
+          return;
+        }
+
         return {
           store: {
             ...store,
@@ -164,8 +170,9 @@ export class StoresService {
       })
     );
 
-    const stores = storesWithShippingCostAndPins.map((item) => item.store);
-    const pins = storesWithShippingCostAndPins.map((item) => item.pin);
+    const filteredStores = storesWithShippingCostAndPins.filter((item) => item !== null && item !== undefined);
+    const stores = filteredStores.map((item) => item.store);
+    const pins = filteredStores.map((item) => item.pin);
 
     return {
       stores: stores,
