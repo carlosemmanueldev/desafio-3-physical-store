@@ -16,16 +16,18 @@ import { UpdateStoreDto } from './dtos/update-store.dto';
 import { Serialize } from '../interceptors/serialize.interceptor';
 import { StoreDto, StoreResponseDto } from './dtos/store.dto';
 import { MultipleStoresDto } from './dtos/multiple-stores.dto';
-import { MultipleStoreWithPinsResponseDto } from './dtos/pins.dto';
+import { MultipleStoreWithPinsResponseDto } from './dtos/stores-with-pins.dto';
 
 @Controller('stores')
 export class StoresController {
-  constructor(private StoresService: StoresService) {}
+  constructor(private StoresService: StoresService) {
+  }
 
   @Post('/')
   @Serialize(StoreResponseDto)
   async createStore(@Body() body: CreateStoreDto) {
     const store = await this.StoresService.create(body);
+
     return { status: 'success', store };
   }
 
@@ -33,6 +35,7 @@ export class StoresController {
   @Serialize(StoreResponseDto)
   async updateStore(@Param('id') id: string, @Body() body: UpdateStoreDto) {
     const store = await this.StoresService.update(id, body);
+
     return { status: 'success', store };
   }
 
@@ -56,14 +59,17 @@ export class StoresController {
 
   @Get('/by-cep/:cep')
   @Serialize(MultipleStoreWithPinsResponseDto)
-  getStoresByCep(@Param('cep') cep: string) {
-    return this.StoresService.getNearBy(cep);
+  async getStoresByCep(@Param('cep') cep: string, @Param('limit') limit: number, @Param('offset') offset: number) {
+    const data = await this.StoresService.getNearBy(cep);
+
+    return { status: 'success', stores: data.stores, pins: data.pins };
   }
 
   @Get('/by-state/:state')
   @Serialize(MultipleStoresDto)
   async getStoresByState(@Param('state') state: string, @Param('limit') limit: number, @Param('offset') offset: number) {
     const stores = await this.StoresService.getByState(state, limit, offset);
-    return { status: 'success', stores};
+
+    return { status: 'success', stores };
   }
 }
