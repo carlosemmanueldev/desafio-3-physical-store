@@ -1,4 +1,5 @@
 import { Prop, Schema, SchemaFactory } from '@nestjs/mongoose';
+import * as mongoosePaginate from 'mongoose-paginate-v2';
 import { Document } from 'mongoose';
 
 @Schema()
@@ -55,3 +56,4 @@ export class Store extends Document {
 export const StoreSchema = SchemaFactory.createForClass(Store);
 
 StoreSchema.index({ location: '2dsphere' });
+StoreSchema.plugin(mongoosePaginate);
