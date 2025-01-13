@@ -105,11 +105,20 @@ export class StoresService {
 
     const storesWithShippingCost = await Promise.all(
       stores.map(async (store) => {
-        const shippingCost = await this.correiosService.getShippingCost(cep, store.postalCode);
-        return {
-          ...store,
-          shippingCost,
-        };
+        if (store.distance > 50 && store.type === 'loja') {
+          const value = await this.correiosService.getShippingCost(cep, store.postalCode);
+          return {
+            ...store,
+            value,
+          };
+        }
+        if (store.distance < 50) {
+          const value = this.getMotoboyCost(store.distance);
+          return {
+            ...store,
+            value,
+          };
+        }
       }),
     );
 
@@ -129,5 +138,17 @@ export class StoresService {
 
   async getByState(state: string, limit: number, page: number) {
     return this.storeModel.find({ state }).exec();
+  }
+
+  getMotoboyCost(distance: number) {
+    const timeInHours = distance / 40;
+    const hours = Math.floor(timeInHours);
+    const minutes = Math.round((timeInHours - hours) * 60);
+
+    return {
+      deliveryTime: `${hours} horas e ${minutes} minutos`,
+      price: 'R$ 15,00',
+      description: 'Motoboy'
+    }
   }
 }
