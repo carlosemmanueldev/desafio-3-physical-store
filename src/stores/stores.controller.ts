@@ -7,7 +7,7 @@ import {
   HttpStatus,
   Param,
   Patch,
-  Post,
+  Post, Query,
 } from '@nestjs/common';
 import { CreateStoreDto } from './dtos/create-store.dto';
 import { StoresService } from './stores.service';
@@ -52,24 +52,26 @@ export class StoresController {
   }
 
   @Get('/')
-  @Serialize(StoreDto)
-  listAll() {
-    return this.StoresService.getAll();
+  @Serialize(MultipleStoresDto)
+  async listAll(@Query('limit') limitReq: number, @Query('offset') offsetReq: number) {
+    const { stores, totalStores, totalPages, offset, limit } = await this.StoresService.getAll(+offsetReq, +limitReq);
+
+    return { status: 'success', stores, totalStores, totalPages, offset, limit };
   }
 
   @Get('/by-cep/:cep')
   @Serialize(MultipleStoreWithPinsResponseDto)
-  async getStoresByCep(@Param('cep') cep: string, @Param('limit') limit: number, @Param('offset') offset: number) {
-    const data = await this.StoresService.getNearBy(cep);
+  async getStoresByCep(@Param('cep') cep: string, @Query('limit') limitReq: number, @Query('offset') offsetReq: number) {
+    const { stores, pins, totalStores, totalPages, offset, limit } = await this.StoresService.getNearBy(cep, +offsetReq, +limitReq);
 
-    return { status: 'success', stores: data.stores, pins: data.pins };
+    return { status: 'success', stores, pins, totalStores, totalPages, offset, limit };
   }
 
   @Get('/by-state/:state')
   @Serialize(MultipleStoresDto)
-  async getStoresByState(@Param('state') state: string, @Param('limit') limit: number, @Param('offset') offset: number) {
-    const stores = await this.StoresService.getByState(state, limit, offset);
+  async getStoresByState(@Param('state') state: string, @Query('limit') limitReq: number, @Query('offset') offsetReq: number) {
+    const { stores, totalStores, totalPages, offset, limit } = await this.StoresService.getByState(state, +offsetReq, +limitReq);
 
-    return { status: 'success', stores };
+    return { status: 'success', stores, totalStores, totalPages, offset, limit };
   }
 }
