@@ -65,6 +65,18 @@ export class MultipleStoreWithPinsResponseDto {
   status: string;
 
   @Expose()
+  offset: number;
+
+  @Expose()
+  limit: number;
+
+  @Expose()
+  totalStores: number;
+
+  @Expose()
+  totalPages: number;
+
+  @Expose()
   @Type(() => StoreWithDeliveryDto)
   stores: StoreWithDeliveryDto[];
 
